@@ -3,7 +3,7 @@ import scipy.sparse as sp
 import pandas as pd
 import sys
 
-def MSAprori(file_args, file_data):
+def MSApriori(file_args, file_data):
     
     def input_args(file_args):
         ms = dict()
@@ -106,4 +106,4 @@ def MSAprori(file_args, file_data):
     F_prune = [[j for j in i if any(k in j for k in x_must) & ~any(set(k).issubset(j) for k in x_cannot)] for i in F]
     output_frequent(F_prune)
 
-MSAprori(*sys.argv[1:])
+MSApriori(*sys.argv[1:])
