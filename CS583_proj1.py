@@ -6,7 +6,8 @@ import sys
 def MSApriori(file_args, file_data):
     
     def input_args(file_args):
-        ms = dict()
+        ms_i = []
+        ms_val = []
         sdc = 1
         x_cannot = []
         x_must = []
@@ -14,14 +15,16 @@ def MSApriori(file_args, file_data):
             i = i.rstrip("\n")
             if i.startswith("MIS"):
                 j = i.split(" = ")
-                ms.update({j[0][4:-1]: float(j[1])})
+                ms_i.append(j[0][4:-1])
+                ms_val.append(float(j[1]))
             elif i.startswith("SDC"):
                 sdc = float(i.split("=")[1])
             elif i.startswith("cannot_be_together"):
                 x_cannot = [j.split(", ") for j in i.split(": ")[1][1:-1].split("}, {")]
             elif i.startswith("must"):
                 x_must = [j for j in i.split(": ")[1].split(" or ")]
-        op = {"ms": ms, "sdc": sdc, "x_cannot": x_cannot, "x_must": x_must}
+        ms_sort = np.argsort(ms_val)
+        op = {"ms_i": np.array(ms_i)[ms_sort], "ms_val": np.array(ms_val)[ms_sort], "sdc": sdc, "x_cannot": x_cannot, "x_must": x_must}
         return(op)
 
     def input_data(file_data, columns):
@@ -36,27 +39,27 @@ def MSApriori(file_args, file_data):
     def pair_sup_mis(x):
         x_t = x[:, np.newaxis]
         x_sup = sup(x_t)
-        x_mis = [ms_dict[i] for i in x]
+        x_mis = [args["ms_val"][i] for i in x]
         x_sup_t = x_sup[:, np.newaxis]
         iL = sp.coo_matrix(np.triu((x_sup_t >= x_mis).T & (np.abs(x_sup_t - x_sup) < args["sdc"]), 1)).nonzero()
         op = list(zip(x[iL[0]], x[iL[1]]))
         return(op)
-
+    
     def frequent(xL):
         x_sup = sup(xL)
         sup_dict.update(dict(zip(xL, x_sup)))
-        op = [xL[j] for j in np.where(x_sup >= [ms_dict[i[0]] for i in xL])[0]]
+        op = [xL[j] for j in np.where(x_sup >= [args["ms_val"][i[0]] for i in xL])[0]]
         xL_dropfirst = set(tuple(i[1:]) for i in xL)
         sup_dict.update(dict(zip(xL_dropfirst, sup(xL_dropfirst))))
         return(op)
-
+    
     def append_set(xL, x_base):
         if len(xL):
             op = [tuple(i) for i in np.hstack([np.tile(x_base, (len(xL), 1)), xL])]
         else:
             op = []
         return(op)
-
+    
     def prune_candidate(xL):
         if xL:
             op = [xL[l] for l in np.where(np.all([[any(set(k).issubset(j) for k in F[-1]) for j in np.delete(xL, i, axis = 1)] for i in range(1, len(xL[0]))], axis = 0))[0]]
@@ -70,29 +73,26 @@ def MSApriori(file_args, file_data):
             if ival:
                 op.append("Frequent {}-itemsets\n".format(i+1))
                 if i == 0:
-                    op += ["\t{} : {}".format(int(sup_dict[j]*len(X)), {int(id_dict[k]) for k in j}) for j in ival]
+                    op += ["\t{} : {}".format(int(sup_dict[j]*len(X)), {int(args["ms_i"][k]) for k in j}) for j in ival]
                 else:
-                    op += ["\t{} : {}\nTailcount = {}".format(int(sup_dict[j]*len(X)), {int(id_dict[k]) for k in j}, int(sup_dict[j[1:]]*len(X))) for j in ival]
+                    op += ["\t{} : {}\nTailcount = {}".format(int(sup_dict[j]*len(X)), {int(args["ms_i"][k]) for k in j}, int(sup_dict[j[1:]]*len(X))) for j in ival]
                 op.append("\nTotal number of frequent {}-itemsets = {}\n\n".format(i+1, len(ival)))
         print("\n".join(op))
         
     # Read Arguments and Transaction Data
     args = input_args(file_args)
-    ms = pd.Series(args["ms"], name = "MIS").sort_values().reset_index()
-    id_dict = ms["index"].to_dict()
-    ms_dict = ms["MIS"].to_dict()
-    id_dict_inv = {val: key for key, val in id_dict.items()}
-    x_must = [id_dict_inv[i] for i in args["x_must"]]
-    x_cannot = [tuple(np.sort([id_dict_inv[j] for j in i])) for i in args["x_cannot"]]
-    X = input_data(file_data, ms["index"]).values
+    id_dict = {i[1]: i[0] for i in enumerate(args["ms_i"])}
+    x_must = [id_dict[i] for i in args["x_must"]]
+    x_cannot = [tuple(np.sort([id_dict[j] for j in i])) for i in args["x_cannot"]]
+    X = input_data(file_data, args["ms_i"]).values
     
     ## Level 1
-    I = [(i,) for i, ival in enumerate(ms_dict)]
+    I = [(i,) for i, ival in enumerate(args["ms_val"])]
     Isup = sup(I)
     sup_dict = dict(zip(I, Isup))
-    Li = (Isup > ms["MIS"]).argmax()
-    L = [i for i in range(Li, ms.shape[0]) if Isup[i] > ms["MIS"][Li]]
-    F = [[(i,) for i in np.where(Isup > ms["MIS"])[0]]]
+    Li = (Isup > args["ms_val"]).argmax()
+    L = [i for i in range(Li, len(args["ms_val"])) if Isup[i] > args["ms_val"][Li]]
+    F = [[(i,) for i in np.where(Isup > args["ms_val"])[0]]]
     
     ## Level >= 2
     C = [i for i in pair_sup_mis(np.array(L)) if i[0] in np.array(F[0]).T[0]]
