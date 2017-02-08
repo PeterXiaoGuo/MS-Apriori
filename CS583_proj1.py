@@ -41,7 +41,7 @@ def MSApriori(file_args, file_data):
         x_sup = sup(x_t)
         x_mis = [args["ms_val"][i] for i in x]
         x_sup_t = x_sup[:, np.newaxis]
-        iL = sp.coo_matrix(np.triu((x_sup_t >= x_mis).T & (np.abs(x_sup_t - x_sup) < args["sdc"]), 1)).nonzero()
+        iL = sp.coo_matrix(np.triu((x_sup_t >= x_mis).T & (np.abs(x_sup_t - x_sup) <= args["sdc"]), 1)).nonzero()
         op = list(zip(x[iL[0]], x[iL[1]]))
         return(op)
     
@@ -90,9 +90,9 @@ def MSApriori(file_args, file_data):
     I = [(i,) for i, ival in enumerate(args["ms_val"])]
     Isup = sup(I)
     sup_dict = dict(zip(I, Isup))
-    Li = (Isup > args["ms_val"]).argmax()
-    L = [i for i in range(Li, len(args["ms_val"])) if Isup[i] > args["ms_val"][Li]]
-    F = [[(i,) for i in np.where(Isup > args["ms_val"])[0]]]
+    Li = (Isup >= args["ms_val"]).argmax()
+    L = [i for i in range(Li, len(args["ms_val"])) if Isup[i] >= args["ms_val"][Li]]
+    F = [[(i,) for i in np.where(Isup >= args["ms_val"])[0]]]
     
     ## Level >= 2
     C = [i for i in pair_sup_mis(np.array(L)) if i[0] in np.array(F[0]).T[0]]
