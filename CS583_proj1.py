@@ -29,7 +29,7 @@ def MSApriori(file_args, file_data):
 
     def input_data(file_data, columns):
         s = pd.read_csv(file_data, header = None, sep = "\t",squeeze = True)
-        op = s.str[1:-1].str.get_dummies(sep = ", ").reindex(columns = columns, fill_value = 0)
+        op = s.str.strip("{} ").str.get_dummies(sep = ", ").reindex(columns = columns, fill_value = 0)
         return(op)
 
     def sup(xL):
