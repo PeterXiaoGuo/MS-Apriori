@@ -54,30 +54,29 @@ def MSApriori(file_args, file_data):
         return(op)
     
     def append_set(xL, x_base):
+        op = []
         if len(xL):
-            op = [tuple(i) for i in np.hstack([np.tile(x_base, (len(xL), 1)), xL])]
-        else:
-            op = []
+            op += [tuple(i) for i in np.hstack([np.tile(x_base, (len(xL), 1)), xL])]
         return(op)
     
     def prune_candidate(xL):
+        op = []
         if xL:
-            op = [xL[l] for l in np.where(np.all([[any(set(k).issubset(j) for k in F[-1]) for j in np.delete(xL, i, axis = 1)] for i in range(1, len(xL[0]))], axis = 0))[0]]
-        else:
-            op = []
+            op += [xL[l] for l in np.where(np.all([[any(set(k).issubset(j) for k in F[-1]) for j in np.delete(xL, i, axis = 1)] for i in range(1, len(xL[0]))], axis = 0))[0]]
         return(op)
     
     def output_frequent(F):
         op = []
+        ms_i_int = args["ms_i"].astype("int")
         for i, ival in enumerate(F):
             if ival:
                 op.append("Frequent {}-itemsets\n".format(i+1))
                 if i == 0:
-                    op += ["\t{} : {}".format(int(sup_dict[j]*len(X)), {int(args["ms_i"][k]) for k in j}) for j in ival]
+                    op += ["\t{} : {}".format(int(sup_dict[j]*len(X)), {ms_i_int[j]}) for j in ival]
                 else:
-                    op += ["\t{} : {}\nTailcount = {}".format(int(sup_dict[j]*len(X)), {int(args["ms_i"][k]) for k in j}, int(sup_dict[j[1:]]*len(X))) for j in ival]
+                    op += ["\t{} : {}\nTailcount = {}".format(int(sup_dict[j]*len(X)), list(ms_i_int[[j]]), int(sup_dict[j[1:]]*len(X))) for j in ival]
                 op.append("\nTotal number of frequent {}-itemsets = {}\n\n".format(i+1, len(ival)))
-        print("\n".join(op))
+        print("\n".join(op).replace("[", "{").replace("]", "}"))
         
     # Read Arguments and Transaction Data
     args = input_args(file_args)
