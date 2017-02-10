@@ -46,11 +46,13 @@ def MSApriori(file_args, file_data):
         return(op)
     
     def frequent(xL):
-        x_sup = sup(xL)
-        sup_dict.update(dict(zip(xL, x_sup)))
-        op = [xL[j] for j in np.where(x_sup >= [args["ms_val"][i[0]] for i in xL])[0]]
-        xL_dropfirst = set(tuple(i[1:]) for i in xL)
-        sup_dict.update(dict(zip(xL_dropfirst, sup(xL_dropfirst))))
+        op = []
+        if xL:
+            x_sup = sup(xL)
+            sup_dict.update(dict(zip(xL, x_sup)))
+            op += [xL[j] for j in np.where(x_sup >= [args["ms_val"][i[0]] for i in xL])[0]]
+            xL_dropfirst = set(tuple(i[1:]) for i in xL)
+            sup_dict.update(dict(zip(xL_dropfirst, sup(xL_dropfirst))))
         return(op)
     
     def append_set(xL, x_base):
@@ -95,11 +97,13 @@ def MSApriori(file_args, file_data):
     
     ## Level >= 2
     C = [i for i in pair_sup_mis(np.array(L)) if i[0] in np.array(F[0]).T[0]]
-    while C:
-        F.append(frequent(C))
+    F_last = frequent(C)
+    while F_last:
+        F.append(F_last)
         Ls = pd.DataFrame(F[-1])
         C = sum([append_set(pair_sup_mis(group.values), name) for name, group in Ls.groupby(list(range(len(F)-1)))[len(F)-1]], [])
         C = prune_candidate(C)
+        F_last = frequent(C)
         
     ## Prune and Output
     F_prune = [[j for j in i if any(k in j for k in x_must) & ~any(set(k).issubset(j) for k in x_cannot)] for i in F]
